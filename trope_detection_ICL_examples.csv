@@ -1,0 +1,29 @@
+contest_number,image_url,human_description,top_caption_1,example
+660,https://nextml.github.io/caption-contest-data/cartoons/660.jpg,"A doctor, wearing a lab coat and stethoscope, is reading from a clipboard while standing next to a patient who is dressed as a king, complete with a crown and a fur-lined robe. The king is sitting on an examination table, looking somewhat content. The setting appears to be a typical doctor's office.",Worse than a cold. It's a common cold.,"STRUCTURAL ELEMENT: Double meaning of ""common""
+    Explanation: The caption uses ""common"" to mean both ""commoner"" (as opposed to the king) and ""common cold"". This clever connection resolves the juxtaposing elements of the cartoon: the king and the doctor's office setting.
+
+    STRUCTURAL ELEMENT: Mild diagnosis with stern tone
+    Explanation: The doctor's relatively mild diagnosis is delivered with a stern tone. This is humorous because the patient is a king, who would likely despise anything ""common"".
+
+    COGNITIVE MECHANISM: Mockery of royal sensibilities
+    Explanation: Typically, being told something is ""worse than a cold"" would imply a serious condition. However, the punchline reveals it's actually a milder, more ordinary ailment."
+661,https://nextml.github.io/caption-contest-data/cartoons/661.jpg,"In a whimsical scene, a woman resembling Snow White stands in a field, surrounded by seven dwarfs who are all joyfully roller-skating. The dwarfs are smiling and appear to be having a great time, while a distant castle is visible on a hill in the background. Snow White looks surprised and amused by the dwarfs' antics.",Workplace morale hasn't been this high since we introduced whistling.,"STRUCTURAL ELEMENT: ""Whistle while you work"" reference
+    Explanation: This phrase refers to a musical number in the 1937 movie Snow White, involving animals joyfully working together. The characters in the cartoon are Snow White and the Seven Dwarfs, directly connecting to this reference.
+
+    COGNITIVE MECHANISM: Corporate speak in fairytale setting
+    Explanation: The use of ""Workplace Morale"" juxtaposes the fairytale setting. The caption ""explains"" the rollerskates as a workplace morale booster, creating a humorous contrast."
+662,https://nextml.github.io/caption-contest-data/cartoons/662.jpg,"A wedding ceremony is taking place with an unusual twist. The bride and groom are dressed as cavemen, complete with animal skins, primitive footwear, and one holding a spear while the other holds a sword. They stand under a decorated archway, facing a minister who is reading from a book. On the left, bridesmaids in traditional dresses hold bouquets, and on the right, groomsmen in tuxedos stand attentively. The contrast between the caveman couple and the formally dressed wedding party creates",It’s about time they settled down and razed a village.,"STRUCTURAL ELEMENT: Wordplay with ""raze"" and ""raise""
+    Explanation: The caption mixes ""raze a village"" (as in, to burn down) with ""raise a family"". This pun connects the juxtaposing elements of the barbarians, who might burn down a village, with a wedding, which is about starting a family.
+
+    COGNITIVE MECHANISM: Resolves incongruity
+    Explanation: The juxtaposing elements of the wedding and barbarians are tied together by the wordplay."
+663,https://nextml.github.io/caption-contest-data/cartoons/663.jpg,"A man and a woman stand in a kitchen, looking perplexed at an open pizza box on the table. Inside the box, instead of a pizza, there is a miniature scene of two people sitting at a small table, having a meal with wine glasses. The tiny figures appear to be engaged in conversation.","Well, you're not what we ordered, either.","COGNITIVE MECHANISM: Absurd implication
+    Explanation: The tiny person's comment implies that the regular sized person deemed the pizza ""not what we ordered"", and that it was taken as a personal insult."
+664,https://nextml.github.io/caption-contest-data/cartoons/664.jpg,"In a courtroom, a judge leans forward, speaking to a man dressed in a magician's outfit complete with a top hat and wand, who is seated in the witness stand. A woman stands nearby holding a document, observing the interaction. The scene is set with the American flag and another flag in the background, adding to the formal courtroom atmosphere.","""When was the last time you saw either half of her?","STRUCTURAL ELEMENT: Reference to common magic trick
+    Explanation: Sawing an assistant in half is a canonical magic trick for stage magicians. The character on the bench is dressed as a stage magician, directly connecting to this reference.
+
+    STRUCTURAL ELEMENT: ""When was the last time you saw them"" trope
+    Explanation: This is a commonly referenced phrase in depictions of criminal court. The judge in the cartoon appears to be barking at the magician, fitting this context.
+
+    COGNITIVE MECHANISM: Absurd implication
+    Explanation: The judge specifying ""either half"" implies that the last time the magician saw the victim, they were still in half, and that a crime was committed during the magic show. This prompts the viewer to imagine the cartoon characters in this comedic situation."
