@@ -18,21 +18,6 @@ def load_data():
 def save_annotations(data, file_path):
     data.to_csv(file_path, index=False)
 
-# Convert the DataFrame to a HuggingFace Dataset
-def convert_to_hf_dataset(file_path):
-    data = pd.read_csv(file_path)
-    
-    # Enforce data types
-    print("Flagging that this was called")
-    data['contest_number'] = data['contest_number'].astype(int)
-    data['image_url'] = data['image_url'].astype(str)
-    data['caption'] = data['caption'].astype(str)
-    data['element_1'] = data['element_1'].astype(str)
-    data['element_2'] = data['element_2'].astype(str)
-    data['element_3'] = data['element_3'].astype(str)
-    data['element_4'] = data['element_4'].astype(str)
-    
-    return Dataset.from_pandas(data)
 
 # Initialize session state for annotations
 if 'annotated_data' not in st.session_state:
