@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
-from datasets import Dataset
 import requests
 from PIL import Image
 from io import BytesIO, StringIO
 import os
-from llm_annotation import analyze_cartoon_caption
 import random
 import boto3
 import json
