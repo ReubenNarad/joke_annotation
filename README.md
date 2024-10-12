@@ -31,6 +31,10 @@ To run the annotation tool:
 streamlit run annotation.py
 ```
 
+
+## Design choices to review
+- Is a random LLM suggestion corret? Or show a novel one each time and keep a backlog?
+
 ## FIXME
 
 - Model name is hard-coded in `generate_llm_suggestions.py`
@@ -44,4 +48,4 @@ streamlit run annotation.py
 - Generalize the LLM suggestion pipeline for multiple captions per cartoon
 - Add authentication/ login
 - Replace csv with external db for multiple users
-
+- How does this app track user time (to pay them?)
