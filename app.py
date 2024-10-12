@@ -3,10 +3,22 @@ import pandas as pd
 from datasets import Dataset
 import requests
 from PIL import Image
-from io import BytesIO
+from io import BytesIO, StringIO
 import os
 from llm_annotation import analyze_cartoon_caption
 import random
+import boto3
+import json
+import time
+import numpy as np
+
+# S3 Configuration
+s3 = boto3.client('s3',
+    aws_access_key_id=st.secrets["aws_credentials"]["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=st.secrets["aws_credentials"]["AWS_SECRET_ACCESS_KEY"],
+    region_name=st.secrets["aws_credentials"]["AWS_DEFAULT_REGION"]
+)
+BUCKET_NAME = 'joke-annotation'
 
 # Load the CSV file from a local path
 @st.cache_data
@@ -14,20 +26,12 @@ def load_data():
     file_path = './caption_contest_data.csv'
     return pd.read_csv(file_path)
 
-# Save the annotations to a new CSV file
-def save_annotations(data, file_path):
-    data.to_csv(file_path, index=False)
-
-
 # Initialize session state for annotations
 if 'annotated_data' not in st.session_state:
-    if os.path.exists("output.csv") and os.path.getsize("output.csv") > 0:
-        st.session_state.annotated_data = pd.read_csv("output.csv")
-    else:
-        st.session_state.annotated_data = pd.DataFrame(columns=[
-            'image_url', 'contest_number', 'caption',
-            'element_1', 'element_2', 'element_3', 'element_4'
-        ])
+    st.session_state.annotated_data = pd.DataFrame(columns=[
+        'image_url', 'contest_number', 'caption',
+        'element_1', 'element_2', 'element_3', 'element_4'
+    ])
 
 # Initialize session state for accepted suggestions
 if 'accepted_suggestions' not in st.session_state:
@@ -59,6 +63,26 @@ def reject_suggestion(element_index):
     st.session_state.rejected_suggestions.add(element_index)  # Mark as rejected
     st.warning(f"Rejected suggestion {element_index + 1}")
 
+# Function to upload annotation to S3
+def upload_annotation_to_s3(annotation_data):
+    timestamp = int(time.time())
+    filename = f"annotation_{timestamp}.json"
+    try:
+        # Convert int64 to int for JSON serialization
+        for key, value in annotation_data.items():
+            if isinstance(value, np.int64):
+                annotation_data[key] = int(value)
+        
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=filename,
+            Body=json.dumps(annotation_data),
+            ContentType='application/json'
+        )
+        st.success(f"Saved!")
+    except Exception as e:
+        st.error(f"Failed to upload annotation to S3: {e}")
+
 # Streamlit UI
 st.title("Joke Explanation Annotation Pipeline")
 
@@ -87,7 +111,6 @@ st.session_state.current_index = min(st.session_state.current_index, len(data)-1
 
 # Display the current row
 current_row = data.iloc[st.session_state.current_index]
-# st.write(current_row)
 
 # Display the contest number
 st.markdown(f"<h3 style='text-align: center;'>Contest {current_row['contest_number']}</h3>", unsafe_allow_html=True)
@@ -106,8 +129,6 @@ except Exception as e:
 # Display the description and top caption
 st.markdown(f"<h4 style='text-align: center;'>{current_row['top_caption_1']}</h4>", unsafe_allow_html=True)
 st.markdown(f"<text style='text-align: center;font-size: 20px;color: gray;'>{current_row['human_description']}</text>", unsafe_allow_html=True)
-
-# Removed the functionality that checks for existing annotations to improve performance
 
 # Load pre-generated LLM suggestions
 @st.cache_data
@@ -217,33 +238,20 @@ else:
     if st.button("Next"):
         st.session_state.processing = True
         with st.spinner('Saving annotation...'):
-            # Create a new row for the annotation
-            new_row = pd.DataFrame([{
+            # Create a new annotation dictionary
+            annotation_dict = {
                 'contest_number': current_row['contest_number'],
                 'image_url': current_row['image_url'],
                 'caption': current_row['top_caption_1'],
                 'element_1': annotations[0] if len(annotations) > 0 else "",
                 'element_2': annotations[1] if len(annotations) > 1 else "",
                 'element_3': annotations[2] if len(annotations) > 2 else "",
-                'element_4': annotations[3] if len(annotations) > 3 else ""
-            }])
+                'element_4': annotations[3] if len(annotations) > 3 else "",
+                'timestamp': int(time.time())
+            }
             
-            # Remove existing annotation if it exists
-            st.session_state.annotated_data = st.session_state.annotated_data[
-                ~(
-                    (st.session_state.annotated_data['contest_number'] == current_row['contest_number']) &
-                    (st.session_state.annotated_data['caption'] == current_row['top_caption_1'])
-                )
-            ]
-            
-            # Append the new annotation
-            st.session_state.annotated_data = pd.concat(
-                [st.session_state.annotated_data, new_row],
-                ignore_index=True
-            )
-            
-            # Save the updated annotations
-            save_annotations(st.session_state.annotated_data, "output.csv")
+            # Upload the annotation to S3
+            upload_annotation_to_s3(annotation_dict)
         
         # Move to the next index **after** saving
         st.session_state.current_index += 1
@@ -262,4 +270,4 @@ else:
         st.rerun()
 
 # Usage:
-# python -m streamlit run annotation.py
+# python -m streamlit run app.py
