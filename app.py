@@ -9,6 +9,7 @@ import boto3
 import json
 import time
 import numpy as np
+from streamlit.components.v1 import html
 
 # S3 Configuration
 s3 = boto3.client('s3',
@@ -19,10 +20,16 @@ s3 = boto3.client('s3',
 BUCKET_NAME = 'joke-annotation'
 
 # Load the CSV file from a local path
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_data():
     file_path = './caption_contest_data.csv'
-    return pd.read_csv(file_path)
+    df = pd.read_csv(file_path)
+    # Ensure all caption columns exist
+    required_cols = ['top_caption_1', 'top_caption_2', 'top_caption_3']
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = ''
+    return df
 
 # Initialize session state for annotations
 if 'annotated_data' not in st.session_state:
@@ -31,35 +38,15 @@ if 'annotated_data' not in st.session_state:
         'element_1', 'element_2', 'element_3', 'element_4'
     ])
 
-# Initialize session state for accepted suggestions
-if 'accepted_suggestions' not in st.session_state:
-    st.session_state.accepted_suggestions = set()
-
-# Initialize session state for rejected suggestions
-if 'rejected_suggestions' not in st.session_state:
-    st.session_state.rejected_suggestions = set()
-
 # Initialize session state for clearing fields
 if 'clear_fields' not in st.session_state:
     st.session_state.clear_fields = False
 
-# Initialize session state for LLM suggestions
-if 'llm_suggestion' not in st.session_state:
-    st.session_state.llm_suggestion = []
-
-# Callback function to accept a suggestion
-def accept_suggestion(element_index, value):
-    # Find the first empty element
-    for i in range(1, 5):
-        if not st.session_state.get(f"element_{i}"):
-            st.session_state[f"element_{i}"] = value
-            break
-    st.session_state.accepted_suggestions.add(element_index)
-
-# Callback function to reject a suggestion
-def reject_suggestion(element_index):
-    st.session_state.rejected_suggestions.add(element_index)  # Mark as rejected
-    st.warning(f"Rejected suggestion {element_index + 1}")
+# Initialize session state for current index and caption
+if 'current_index' not in st.session_state:
+    data = load_data()
+    st.session_state.current_index = random.randint(0, len(data)-1)
+    st.session_state.current_caption_idx = random.randint(0, 2)
 
 # Function to upload annotation to S3
 def upload_annotation_to_s3(annotation_data):
@@ -81,191 +68,149 @@ def upload_annotation_to_s3(annotation_data):
     except Exception as e:
         st.error(f"Failed to upload annotation to S3: {e}")
 
-# Streamlit UI
-st.title("Joke Explanation Annotation Pipeline")
+# Add this function near the top with other function definitions
+def scroll_to_top():
+    # Javascript to scroll to the top of the page
+    js = '''
+        <script>
+            window.parent.document.querySelector('section.main').scrollTo(0, 0);
+        </script>
+    '''
+    html(js)
 
-# Load data
-data = load_data()
+# Add this near the top of the UI section, before the title
+tab1, tab2 = st.tabs(["Annotate", "Examples"])
 
-# Input for jump to contest number
-jump_to_contest = st.number_input("Jump to row", min_value=0, max_value=len(data)-1, value=0)
-
-# Initialize session state for current index
-if 'current_index' not in st.session_state:
-    st.session_state.current_index = 0
-# Update current index if jump to contest is used
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    if st.button("Go!", use_container_width=True):
-        st.session_state.current_index = jump_to_contest
-        # Reset suggestions when navigating to a new cartoon
-        st.session_state.accepted_suggestions = set()
-        st.session_state.rejected_suggestions = set()
-        st.session_state.llm_suggestion = []
-        st.rerun()
-
-# Ensure current_index is within bounds
-st.session_state.current_index = min(st.session_state.current_index, len(data)-1)
-
-# Display the current row
-current_row = data.iloc[st.session_state.current_index]
-
-# Display the contest number
-st.markdown(f"<h3 style='text-align: center;'>Contest {current_row['contest_number']}</h3>", unsafe_allow_html=True)
-
-# Display the image
-image_url = current_row['image_url']
-try:
-    response = requests.get(image_url)
-    img = Image.open(BytesIO(response.content))
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.image(img, width=400, use_column_width=True)
-except Exception as e:
-    st.error(f"Error loading image: {e}")
-
-# Display the description and top caption
-st.markdown(f"<h4 style='text-align: center;'>{current_row['top_caption_1']}</h4>", unsafe_allow_html=True)
-st.markdown(f"<text style='text-align: center;font-size: 20px;color: gray;'>{current_row['human_description']}</text>", unsafe_allow_html=True)
-
-# Load pre-generated LLM suggestions
-@st.cache_data
-def load_pre_generated_suggestions():
-    file_path = './pre_generated_llm_suggestions/gpt-4o-mini.csv'
-    return pd.read_csv(file_path)
-
-pre_generated_suggestions = load_pre_generated_suggestions()
-
-def get_llm_suggestion():
-    key = (current_row['contest_number'], current_row['top_caption_1'])
-    # Filter the suggestions for the current cartoon and caption
-    suggestions_row = pre_generated_suggestions[
-        (pre_generated_suggestions['contest_number'] == key[0]) &
-        (pre_generated_suggestions['caption'] == key[1])
-    ]
+with tab1:
+    # Move all existing UI content here
+    st.title("Joke Explanation Annotation Pipeline")
     
-    if suggestions_row.empty:
-        st.error("No pre-generated suggestions available for this entry.")
-        return
-    
-    suggestions = suggestions_row.iloc[0]['suggestions']
-    # Convert string representation of list back to actual list
-    suggestions = eval(suggestions)
-    
-    if not suggestions:
-        st.error("No suggestions found.")
-        return
-    
-    # Choose a random suggestion
-    selected_suggestion = random.choice(suggestions)
-    st.session_state.llm_suggestion = [selected_suggestion]
+    # Use the stored session state instead of reloading
+    data = load_data()
+    current_row = data.iloc[st.session_state.current_index]
+    caption_col = f'top_caption_{st.session_state.current_caption_idx + 1}'
+    current_caption = current_row[caption_col]
 
-llm_suggestion = {}
-examples_df = pd.read_csv("./trope_detection_ICL_examples.csv")
+    # Display the contest number
+    st.markdown(f"<h3 style='text-align: center;'>Contest {current_row['contest_number']}</h3>", unsafe_allow_html=True)
 
-# Replace the existing "Get LLM Suggestion" button and spinner with this:
-col1, col2 = st.columns([2, 3])
-with col1:
-    if st.button("Get LLM Suggestion", use_container_width=True):
+    # Display the image
+    image_url = current_row['image_url']
+    try:
+        response = requests.get(image_url)
+        img = Image.open(BytesIO(response.content))
+        col1, col2, col3 = st.columns([1,2,1])
         with col2:
-            with st.spinner("Generating LLM suggestions..."):
-                get_llm_suggestion()
+            st.image(img, width=400, use_column_width=True)
+    except Exception as e:
+        st.error(f"Error loading image: {e}")
 
-# Display LLM suggestions with individual accept and reject buttons
-if 'llm_suggestion' in st.session_state and st.session_state.llm_suggestion:
-    for index, value in enumerate(st.session_state.llm_suggestion):
-        if index in st.session_state.accepted_suggestions or index in st.session_state.rejected_suggestions:
-            continue  # Skip rendering if already accepted or rejected
+    # Display the caption and description
+    st.markdown(f"<h4 style='text-align: center;'>{current_caption}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<text style='text-align: center;font-size: 20px;color: gray;'>{current_row['human_description']}</text>", unsafe_allow_html=True)
 
-        col1, col2, col3 = st.columns([7, 2, 2])
-        with col1:
-            st.text_area(
-                f"LLM Suggestion {index + 1}",
-                value=value,
-                key=f"llm_suggestion_{index}",
-                height=100,
-                disabled=True,
-                label_visibility="collapsed"
-            )
-        with col2:
-            st.button(
-                f"Accept",
-                key=f"accept_suggestion_{index}",
-                on_click=accept_suggestion,
-                args=(index, value),
-                use_container_width=True
-            )
-        with col3:
-            st.button(
-                f"Reject",
-                key=f"reject_suggestion_{index}",
-                on_click=reject_suggestion,
-                args=(index,),
-                use_container_width=True
-            )
+    # Update the index and caption index without rerunning
+    if st.button("Skip", type="secondary"):
+        st.session_state.current_index = random.randint(0, len(data)-1)
+        st.session_state.current_caption_idx = random.randint(0, 2)
+        st.session_state.clear_fields = True
+        scroll_to_top()
 
-    # Update the annotations list after accepting suggestions
-    annotations = [
-        st.session_state.get(f"element_{i+1}", "") for i in range(4)
-    ]
-
-# Annotation inputs
-annotations = []
-for i in range(4):
-    element_col = f"element_{i+1}"
-    # Check if fields should be cleared
-    if st.session_state.clear_fields:
-        default_value = ""
+    # Use session state to control form display
+    if 'submitted' in st.session_state and st.session_state.submitted:
+        st.success("Annotation saved!")
+        st.session_state.submitted = False
     else:
-        default_value = st.session_state.get(element_col, "")
-    
-    annotation = st.text_area(f"Element {i+1}", value=default_value, key=element_col)
-    annotations.append(annotation)
+        with st.form(key='annotation_form'):
+            annotations = []
+            for i in range(4):
+                element_col = f"element_{i+1}"
+                default_value = "" if st.session_state.clear_fields else st.session_state.get(element_col, "")
+                annotation = st.text_area(f"Component {i+1}", value=default_value, key=element_col)
+                annotations.append(annotation)
 
-# Reset the clear_fields flag
-if st.session_state.clear_fields:
-    st.session_state.clear_fields = False
+            submit_button = st.form_submit_button("Next")
+            
+            if submit_button:
+                st.session_state.submitted = True
+                st.session_state.annotations = annotations
+                scroll_to_top()
+                # No rerun needed, just update the UI
 
-# Save annotation and move to next
-if 'processing' not in st.session_state:
-    st.session_state.processing = False
-
-if st.session_state.processing:
-    st.warning("Processing your annotation...")
-else:
-    if st.button("Next"):
-        st.session_state.processing = True
+    # Handle form processing outside the form
+    if st.session_state.get('submitted', False):
         with st.spinner('Saving annotation...'):
-            # Create a new annotation dictionary
             annotation_dict = {
                 'contest_number': current_row['contest_number'],
                 'image_url': current_row['image_url'],
-                'caption': current_row['top_caption_1'],
-                'element_1': annotations[0] if len(annotations) > 0 else "",
-                'element_2': annotations[1] if len(annotations) > 1 else "",
-                'element_3': annotations[2] if len(annotations) > 2 else "",
-                'element_4': annotations[3] if len(annotations) > 3 else "",
+                'caption': current_caption,
+                'element_1': st.session_state.annotations[0] if len(st.session_state.annotations) > 0 else "",
+                'element_2': st.session_state.annotations[1] if len(st.session_state.annotations) > 1 else "",
+                'element_3': st.session_state.annotations[2] if len(st.session_state.annotations) > 2 else "",
+                'element_4': st.session_state.annotations[3] if len(st.session_state.annotations) > 3 else "",
                 'timestamp': int(time.time())
             }
-            
-            # Upload the annotation to S3
             upload_annotation_to_s3(annotation_dict)
-        
-        # Move to the next index **after** saving
-        st.session_state.current_index += 1
-        if st.session_state.current_index >= len(data):
-            st.session_state.current_index = 0
+            
+            # Clear old states before setting new ones
+            for key in list(st.session_state.keys()):
+                if key.startswith('element_'):
+                    del st.session_state[key]
+            
+            # Choose new random cartoon and caption
+            st.session_state.current_index = random.randint(0, len(data)-1)
+            st.session_state.current_caption_idx = random.randint(0, 2)
+            st.session_state.clear_fields = True
+            st.session_state.submitted = False
+            
+            # Clear the annotations from session state
+            if 'annotations' in st.session_state:
+                del st.session_state.annotations
+                
+            # Force clear cache for the current page
+            st.cache_data.clear()
+            
+            scroll_to_top()
+            st.rerun()
 
-        # Reset suggestions for the new cartoon
-        st.session_state.accepted_suggestions = set()
-        st.session_state.rejected_suggestions = set()
-        st.session_state.llm_suggestion = []
-        
-        # Set the flag to clear fields
-        st.session_state.clear_fields = True
-        
-        st.session_state.processing = False
-        st.rerun()
+    # Reset clear_fields after the form is displayed
+    st.session_state.clear_fields = False
+
+with tab2:
+    st.title("Examples")
+    
+    # Load examples data
+    examples_df = pd.read_csv("./trope_detection_ICL_examples.csv")
+    
+    for _, row in examples_df.iterrows():
+        with st.container():
+            # Display contest number (centered)
+            st.markdown(f"<h3 style='text-align: center;'>Contest {row['contest_number']}</h3>", unsafe_allow_html=True)
+            
+            # Display the image
+            try:
+                response = requests.get(row['image_url'])
+                img = Image.open(BytesIO(response.content))
+                col1, col2, col3 = st.columns([1,2,1])
+                with col2:
+                    st.image(img, width=400, use_column_width=True)
+            except Exception as e:
+                st.error(f"Error loading image: {e}")
+            
+            # Display the caption (centered)
+            st.markdown(f"<h4 style='text-align: center;'>{row['top_caption_1']}</h4>", unsafe_allow_html=True)
+            
+            # Display the example annotation as bullet points
+            st.markdown(f"**Example Annotation:**")
+            # Split the example text on newlines and create bullet points
+            points = row['example'].split('\n')
+            for point in points:
+                if point.strip():  # Only create bullet point if there's content
+                    st.markdown(f"• {point.strip()}")
+            
+            # Add a divider between examples
+            st.divider()
 
 # Usage:
 # python -m streamlit run app.py
+
